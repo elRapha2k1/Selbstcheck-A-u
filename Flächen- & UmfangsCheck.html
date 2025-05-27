@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="de"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta charset="UTF-8">
+  <title>Flächen- &amp; Umfangrechner (Selbstüberprüfung)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 30px;
+    }
+    .input-group {
+      margin-bottom: 20px;
+      font-size: 1.5em;
+    }
+    label {
+      display: inline-block;
+      width: 250px;
+    }
+    input, select {
+      font-size: 1.2em;
+      padding: 5px 10px;
+    }
+    button {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    .error {
+      font-size: 1.2em;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .ok { color: green; }
+    .fail { color: red; }
+  </style>
+</head>
+<body>
+<h1>Selbstüberprüfung: Fläche &amp; Umfang</h1>
+
+<div class="input-group">
+  <label for="mode">Modus:</label>
+  <select id="mode">
+    <option value="flaeche" selected="selected">Flächeninhalt</option>
+    <option value="umfang">Umfang</option>
+  </select>
+</div>
+
+<div class="input-group">
+  <label for="shape">Figur auswählen:</label>
+  <select id="shape">
+    <option value="">-- bitte auswählen --</option>
+    <option value="dreieck">Allgemeines Dreieck</option>
+    <option value="rechtwinkliges_dreieck">Rechtwinkliges Dreieck</option>
+    <option value="rechteck">Rechteck</option>
+    <option value="quadrat">Quadrat</option>
+    <option value="parallelogramm">Parallelogramm</option>
+    <option value="raute" selected="selected">Raute</option>
+    <option value="deltoid">Deltoid</option>
+    <option value="trapez">Trapez</option>
+  </select>
+</div>
+
+<div id="inputs"><div class="input-group"><label for="e">Diagonale e:</label>
+                      <input type="number" id="e" step="any" value="3"></div><div class="input-group"><label for="f">Diagonale f:</label>
+                      <input type="number" id="f" step="any" value="4"></div><div class="input-group"><label for="A">Fläche:</label>
+                      <input type="number" id="A" step="any" value="7"></div></div>
+<p id="warnung" class="error fail">Upsi, da ist dir wohl ein kleiner Fehler passiert. Deine Lösung stimmt leider nicht.</p>
+<button onclick="checkSolution()">Lösung prüfen</button>
+<button onclick="resetForm()">Zurücksetzen</button>
+
+<script>
+const shapeFields = {
+  flaeche: {
+    dreieck: ['a', 'h', 'A'],
+    rechtwinkliges_dreieck: ['a', 'b', 'A'],
+    rechteck: ['a', 'b', 'A'],
+    quadrat: ['a', 'A'],
+    parallelogramm: ['a', 'h', 'A'],
+    raute: ['e', 'f', 'A'],
+    deltoid: ['e', 'f', 'A'],
+    trapez: ['a', 'c', 'h', 'A']
+  },
+  umfang: {
+    dreieck: ['a', 'b', 'c', 'U'],
+    rechtwinkliges_dreieck: ['a', 'b', 'c', 'U'],
+    rechteck: ['a', 'b', 'U'],
+    quadrat: ['a', 'U'],
+    parallelogramm: ['a', 'b', 'U'],
+    raute: ['a', 'U'],
+    deltoid: ['a', 'b', 'U'],
+    trapez: ['a', 'b', 'c', 'd', 'U']
+  }
+};
+
+const labels = {
+  a: 'Seite a', b: 'Seite b', c: 'Seite c', d: 'Seite d',
+  h: 'Höhe', e: 'Diagonale e', f: 'Diagonale f',
+  A: 'Fläche', U: 'Umfang'
+};
+
+const modeSelect = document.getElementById('mode');
+const shapeSelect = document.getElementById('shape');
+const inputsDiv = document.getElementById('inputs');
+const warnung = document.getElementById('warnung');
+
+modeSelect.addEventListener('change', renderInputs);
+shapeSelect.addEventListener('change', renderInputs);
+
+function renderInputs() {
+  inputsDiv.innerHTML = '';
+  warnung.innerText = '';
+  warnung.className = 'error';
+  const shape = shapeSelect.value;
+  const mode = modeSelect.value;
+  if (!shape) return;
+  const felder = shapeFields[mode][shape];
+  if (!felder) return;
+
+  felder.forEach(key => {
+    const div = document.createElement('div');
+    div.className = 'input-group';
+    div.innerHTML = `<label for="${key}">${labels[key]}:</label>
+                      <input type="number" id="${key}" step="any">`;
+    inputsDiv.appendChild(div);
+  });
+}
+
+function resetForm() {
+  shapeSelect.value = '';
+  inputsDiv.innerHTML = '';
+  warnung.innerText = '';
+  warnung.className = 'error';
+}
+
+function checkSolution() {
+  warnung.innerText = '';
+  warnung.className = 'error';
+  const shape = shapeSelect.value;
+  const mode = modeSelect.value;
+  if (!shape) return;
+  const felder = shapeFields[mode][shape];
+  if (!felder) return;
+
+  let values = {};
+  let filled = true;
+  felder.forEach(k => {
+    const val = parseFloat(document.getElementById(k)?.value);
+    if (isNaN(val)) filled = false;
+    values[k] = val;
+  });
+  if (!filled) {
+    warnung.textContent = 'Bitte alle Werte ausfüllen.';
+    warnung.classList.add('fail');
+    return;
+  }
+
+  let korrekt = false;
+  try {
+    switch (mode + ':' + shape) {
+      case 'flaeche:dreieck':
+        korrekt = Math.abs(0.5 * values.a * values.h - values.A) < 0.01;
+        break;
+      case 'flaeche:parallelogramm': {
+        const ist = mode === 'flaeche:dreieck' ? 0.5 * values.a * values.h : values.a * values.h;
+        korrekt = Math.abs(ist - values.A) < 0.01;
+        break;
+      }
+      case 'flaeche:rechtwinkliges_dreieck':
+        korrekt = Math.abs(0.5 * values.a * values.b - values.A) < 0.01; break;
+      case 'flaeche:rechteck':
+        korrekt = Math.abs(values.a * values.b - values.A) < 0.01; break;
+      case 'flaeche:quadrat':
+        korrekt = Math.abs(values.a * values.a - values.A) < 0.01; break;
+      case 'flaeche:raute':
+      case 'flaeche:deltoid':
+        korrekt = Math.abs(0.5 * values.e * values.f - values.A) < 0.01; break;
+      case 'flaeche:trapez':
+        korrekt = Math.abs(0.5 * (values.a + values.c) * values.h - values.A) < 0.01; break;
+      case 'umfang:quadrat':
+      case 'umfang:raute':
+        korrekt = Math.abs(4 * values.a - values.U) < 0.01; break;
+      case 'umfang:rechteck':
+      case 'umfang:parallelogramm':
+      case 'umfang:deltoid':
+        korrekt = Math.abs(2 * (values.a + values.b) - values.U) < 0.01; break;
+      case 'umfang:dreieck':
+      case 'umfang:rechtwinkliges_dreieck':
+        korrekt = Math.abs(values.a + values.b + values.c - values.U) < 0.01; break;
+      case 'umfang:trapez':
+        korrekt = Math.abs(values.a + values.b + values.c + values.d - values.U) < 0.01; break;
+    }
+  } catch (e) {
+    warnung.textContent = 'Fehler bei der Überprüfung.';
+    warnung.classList.add('fail');
+    return;
+  }
+
+  if (korrekt) {
+    warnung.textContent = 'Du hast es geschafft, deine Lösung stimmt.';
+    warnung.classList.add('ok');
+  } else {
+    warnung.textContent = 'Upsi, da ist dir wohl ein kleiner Fehler passiert. Deine Lösung stimmt leider nicht.';
+    warnung.classList.add('fail');
+  }
+}
+</script>
+
+
+</body></html>
